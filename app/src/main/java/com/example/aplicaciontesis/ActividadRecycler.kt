@@ -4,6 +4,7 @@ import MyAdapter
 import android.content.Intent
 import android.os.Bundle
 import android.provider.MediaStore
+import android.util.Log
 import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -12,11 +13,18 @@ import com.example.aplicaciontesis.dataClass.Vivienda
 import com.example.aplicaciontesis.databinding.ActivityCamaraGaleriaBinding
 import com.example.aplicaciontesis.databinding.ActivityReciclerViewBinding
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import org.json.JSONObject
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import java.io.File
+
 class ActividadRecycler : AppCompatActivity() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var binding: ActivityReciclerViewBinding
@@ -32,6 +40,45 @@ class ActividadRecycler : AppCompatActivity() {
         adapter = MyAdapter(emptyList())
         recyclerView.adapter = adapter
         val call = ApiClient.apiService.obtenerViviendas()
+
+        var numCluster: String? = intent.getStringExtra("cluster")
+        var datosObtenidos: List<Vivienda> = emptyList()
+        if (numCluster != null) {
+            try {
+                Log.w("Respuesta", "El cluster que llega es: $numCluster")
+
+                // Verificar que apiService no sea nulo
+                ApiClient.apiService?.let { apiService ->
+                    val call = apiService.obtenerClusterSeleccionado(numCluster)
+                    val response = call.execute()
+
+                    if (response.isSuccessful) {
+                        val datosJson = response.body()?.string()
+
+                        // Manejar el caso donde datosJson sea nulo
+                        if (datosJson != null) {
+                            val viviendas: List<Vivienda> = convertirJsonAVivienda(datosJson)
+                            Log.w("Respuesta", "El Json es: $datosJson")
+                            datosObtenidos = viviendas
+                            Log.w("Respuesta", "La respuesta es exitosa")
+                        } else {
+                            Log.w("Respuesta", "El cuerpo de la respuesta es nulo")
+                        }
+                    } else {
+                        Log.w("Respuesta", "La respuesta no fue exitosa: ${response.code()}")
+                    }
+                } ?: run {
+                    Log.w("Respuesta", "apiService es nulo")
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Log.e("Respuesta", "Excepción al ejecutar la llamada a la API: ${e.message}")
+            }
+        } else {
+            Log.w("Respuesta", "No se pudo ejecutar: numCluster es nulo")
+        }
+
+
         botonAgregar.setOnClickListener {
             val intent = Intent(this, CamaraGaleria::class.java)
             startActivity(intent)
@@ -51,8 +98,30 @@ class ActividadRecycler : AppCompatActivity() {
             }
         })
     }
+    fun convertirJsonAVivienda(datosJson: String?): List<Vivienda> {
+        val viviendas = mutableListOf<Vivienda>()
+
+        try {
+            // Verificar si el JSON no es nulo
+            if (datosJson != null) {
+                val json = JSONObject(datosJson)
+
+                // Obtener los valores del JSON
+                val descripcion = json.optString("descripcion", "")
+                val img = json.optString("url_img", "")
+                val url = json.optString("url", "")
+
+                // Crear un objeto Vivienda y agregarlo a la lista
+                viviendas.add(Vivienda(descripcion, img, url))
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        return viviendas
+    }
     object RetrofitClient {
-        private const val BASE_URL = "http://10.0.2.2:5000/api/"
+        private const val BASE_URL = "http://10.0.2.2:5000/"
         val retrofit: Retrofit by lazy {
             Retrofit.Builder()
                 .baseUrl(BASE_URL)
@@ -63,7 +132,7 @@ class ActividadRecycler : AppCompatActivity() {
 
     object ApiClient {
         val apiService: ApiService by lazy {
-            RetrofitClient.retrofit.create(ApiService::class.java)
+                    RetrofitClient.retrofit.create(ApiService::class.java)
         }
     }
     /*private fun recuperarLista() {
