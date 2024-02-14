@@ -1,11 +1,17 @@
 package com.example.aplicaciontesis
 
 import MyAdapter
+import android.content.Intent
 import android.os.Bundle
+import android.provider.MediaStore
+import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.aplicaciontesis.dataClass.Vivienda
+import com.example.aplicaciontesis.databinding.ActivityCamaraGaleriaBinding
+import com.example.aplicaciontesis.databinding.ActivityReciclerViewBinding
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.Call
@@ -13,15 +19,23 @@ import retrofit2.Callback
 import retrofit2.Response
 class ActividadRecycler : AppCompatActivity() {
     private lateinit var recyclerView: RecyclerView
+    private lateinit var binding: ActivityReciclerViewBinding
+    private lateinit var botonAgregar: FloatingActionButton
     private lateinit var adapter: MyAdapter
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_recicler_view)
-        recyclerView = findViewById(R.id.recyclerView)
+        binding = ActivityReciclerViewBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        recyclerView = binding.recyclerView
+        botonAgregar = binding.openCameraButton
         recyclerView.layoutManager = LinearLayoutManager(this)
         adapter = MyAdapter(emptyList())
         recyclerView.adapter = adapter
         val call = ApiClient.apiService.obtenerViviendas()
+        botonAgregar.setOnClickListener {
+            val intent = Intent(this, CamaraGaleria::class.java)
+            startActivity(intent)
+        }
 
         call.enqueue(object : Callback<List<Vivienda>> {
             override fun onResponse(call: Call<List<Vivienda>>, response: Response<List<Vivienda>>) {
@@ -32,17 +46,13 @@ class ActividadRecycler : AppCompatActivity() {
                     }
                 }
             }
-
             override fun onFailure(call: Call<List<Vivienda>>, t: Throwable) {
-                // Tu código de manejo de error aquí
+
             }
         })
-        //Llamada a la función recuperarLista
-        //recuperarLista()
     }
     object RetrofitClient {
         private const val BASE_URL = "http://10.0.2.2:5000/api/"
-
         val retrofit: Retrofit by lazy {
             Retrofit.Builder()
                 .baseUrl(BASE_URL)
