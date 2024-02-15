@@ -17,6 +17,8 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.ResponseBody
+import org.json.JSONArray
 import org.json.JSONObject
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -24,6 +26,7 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 import java.io.File
+import kotlin.random.Random
 
 class ActividadRecycler : AppCompatActivity() {
     private lateinit var recyclerView: RecyclerView
@@ -42,40 +45,68 @@ class ActividadRecycler : AppCompatActivity() {
         val call = ApiClient.apiService.obtenerViviendas()
 
         var numCluster: String? = intent.getStringExtra("cluster")
-        var datosObtenidos: List<Vivienda> = emptyList()
+        var numAleatorio100 = Random.nextInt(1, 101)
         if (numCluster != null) {
             try {
-                Log.w("Respuesta", "El cluster que llega es: $numCluster")
-
-                // Verificar que apiService no sea nulo
-                ApiClient.apiService?.let { apiService ->
-                    val call = apiService.obtenerClusterSeleccionado(numCluster)
-                    val response = call.execute()
-
-                    if (response.isSuccessful) {
-                        val datosJson = response.body()?.string()
-
-                        // Manejar el caso donde datosJson sea nulo
-                        if (datosJson != null) {
-                            val viviendas: List<Vivienda> = convertirJsonAVivienda(datosJson)
-                            Log.w("Respuesta", "El Json es: $datosJson")
-                            datosObtenidos = viviendas
-                            Log.w("Respuesta", "La respuesta es exitosa")
-                        } else {
-                            Log.w("Respuesta", "El cuerpo de la respuesta es nulo")
+                val call = ApiClient.apiService.obtenerClusterSeleccionado(numCluster)
+                call.enqueue(object : Callback<ResponseBody> {
+                    override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {
+                        if (response.isSuccessful) {
+                            try {
+                                Log.w("Respuesta", "La respuesta es exitosa")
+                                val responseBody = response.body()
+                                if (responseBody != null) {
+                                    val datosJson = responseBody.string()
+                                    val viviendas = convertirJsonAVivienda(datosJson)
+                                    //Log.w("Respuesta", "Datos JSON: $datosJson")
+                                    Log.w("Respuesta", "Datos JSON: $viviendas")
+                                    adapter.updateData(viviendas)
+                                }
+                            } catch (e: Exception) {
+                                Log.w("Respuesta", "Exeption")
+                                e.printStackTrace()
+                            }
                         }
-                    } else {
-                        Log.w("Respuesta", "La respuesta no fue exitosa: ${response.code()}")
                     }
-                } ?: run {
-                    Log.w("Respuesta", "apiService es nulo")
-                }
+                    override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
+                        Log.w("Respuesta", "La respuesta es Failure")
+                    }
+                })
             } catch (e: Exception) {
                 e.printStackTrace()
                 Log.e("Respuesta", "Excepción al ejecutar la llamada a la API: ${e.message}")
             }
         } else {
-            Log.w("Respuesta", "No se pudo ejecutar: numCluster es nulo")
+
+            try {
+                val call = ApiClient.apiService.obtenerClusterSeleccionado(numAleatorio100.toString())
+                call.enqueue(object : Callback<ResponseBody> {
+                    override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {
+                        if (response.isSuccessful) {
+                            try {
+                                Log.w("Respuesta", "La respuesta es exitosa")
+                                val responseBody = response.body()
+                                if (responseBody != null) {
+                                    val datosJson = responseBody.string()
+                                    val viviendas = convertirJsonAVivienda(datosJson)
+                                    //Log.w("Respuesta", "Datos JSON: $datosJson")
+                                    Log.w("Respuesta", "Datos JSON: $viviendas")
+                                    adapter.updateData(viviendas)
+                                }
+                            } catch (e: Exception) {
+                                Log.w("Respuesta", "Exeption")
+                                e.printStackTrace()
+                            }
+                        }
+                    }
+                    override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
+                        Log.w("Respuesta", "La respuesta es Failure")
+                    }
+                })
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Log.e("Respuesta", "Excepción al ejecutar la llamada a la API: ${e.message}")
+            }
         }
 
 
@@ -100,19 +131,38 @@ class ActividadRecycler : AppCompatActivity() {
     }
     fun convertirJsonAVivienda(datosJson: String?): List<Vivienda> {
         val viviendas = mutableListOf<Vivienda>()
-
         try {
-            // Verificar si el JSON no es nulo
             if (datosJson != null) {
-                val json = JSONObject(datosJson)
+                Log.w("Respuesta", "El Json es: $datosJson")
+                val jsonArray = JSONArray(datosJson)
+                for (i in 0 until jsonArray.length()) {
+                    val json = jsonArray.getJSONObject(i)
+                    val descripcion = json.optString("descripcion", "")
+                        .split(" ")
+                        .joinToString(" ") {
+                            if (it.length > 3) {
+                                it.lowercase().replaceFirstChar { char -> char.uppercase() }
+                            } else {
+                                it.lowercase()
+                            }
+                        }
 
-                // Obtener los valores del JSON
-                val descripcion = json.optString("descripcion", "")
-                val img = json.optString("url_img", "")
-                val url = json.optString("url", "")
+                    val img = json.optString("url_img", "")
+                    val url = json.optString("url", "")
+                    // Crear un objeto Vivienda y agregarlo a la lista
+                    var contiene = false
+                    for(elemento in viviendas){
+                        if(elemento.url == url){
+                            contiene = true;
+                            break
+                        }
+                    }
+                    if(contiene == false){
+                        viviendas.add(Vivienda(descripcion, img, url))
+                    }
 
-                // Crear un objeto Vivienda y agregarlo a la lista
-                viviendas.add(Vivienda(descripcion, img, url))
+                }
+
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -135,31 +185,5 @@ class ActividadRecycler : AppCompatActivity() {
                     RetrofitClient.retrofit.create(ApiService::class.java)
         }
     }
-    /*private fun recuperarLista() {
-
-        val baseUrl = "http://10.0.2.2:5000/api/"
-        val retrofit = Retrofit.Builder()
-            .baseUrl(baseUrl)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-
-        val apiService = retrofit.create(ApiService::class.java)
-
-        val call = ApiClient.apiService.obtenerViviendas()
-        call.enqueue(object : Callback<Vivienda> {
-            override fun onResponse(call: Call<Vivienda>, response: Response<Vivienda>) {
-                if (response.isSuccessful) {
-                    val post = response.body()
-                    // Handle the retrieved post data
-                } else {
-                    // Handle error
-                }
-            }
-
-            override fun onFailure(call: Call<Vivienda>, t: Throwable) {
-                // Handle failure
-            }
-        })
-    }*/
 }
 
