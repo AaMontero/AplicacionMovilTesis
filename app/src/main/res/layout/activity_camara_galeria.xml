@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#FFFFE0"
-    tools:context=".MainActivity">
+    >
 
     <View
         android:id="@+id/view"
@@ -24,7 +24,7 @@
         android:id="@+id/textView11"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Agregar desde cámara"
+        android:text="Agregar Desde Galería"
         android:textColor="#000000"
         android:textSize="26dp"
         android:textStyle="bold"
@@ -78,7 +78,7 @@
         android:id="@+id/textView6"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Agregar desde Galería"
+        android:text="Agregar Desde Cámara"
         android:textColor="#000000"
         android:textSize="26dp"
         android:textStyle="bold"
@@ -93,7 +93,7 @@
         android:id="@+id/textView12"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Agregar una imagen"
+        android:text="Subir una Imagen"
         android:textColor="#000000"
         android:textSize="26dp"
         android:textStyle="bold"
@@ -103,19 +103,5 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.179" />
-
-    <TextView
-        android:id="@+id/textoNombre"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:text=""
-        android:textColor="#000000"
-        android:textSize="26dp"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.498"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textView12" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
