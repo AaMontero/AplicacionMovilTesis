@@ -1,5 +1,4 @@
 package com.example.aplicaciontesis
-
 import android.content.Intent
 import android.content.pm.PackageManager
 import androidx.appcompat.app.AppCompatActivity
@@ -10,14 +9,16 @@ import androidx.core.content.ContextCompat
 import com.example.aplicaciontesis.databinding.ActivityCamaraGaleriaBinding
 import android.Manifest
 import android.net.Uri
+import android.os.Environment
 import android.util.Log
 import androidx.appcompat.app.AlertDialog
+import androidx.core.content.FileProvider
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonParser
-import okhttp3.MediaType
+import com.squareup.picasso.BuildConfig
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
-import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.Callback
@@ -25,10 +26,13 @@ import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.io.File
+import java.io.IOException
 
 class CamaraGaleria : AppCompatActivity() {
     private lateinit var binding: ActivityCamaraGaleriaBinding
     private val CAMERA_PERMISSION_REQUEST_CODE = 100
+    private val CAMERA_CAPTURE_REQUEST_CODE = 101
+    private lateinit var file:File
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityCamaraGaleriaBinding.inflate(layoutInflater)
@@ -46,35 +50,39 @@ class CamaraGaleria : AppCompatActivity() {
             seleccionarImagen()
         }
     }
-    fun seleccionarImagen() {
+    private fun seleccionarImagen() {
         val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
         intent.action = Intent.ACTION_GET_CONTENT
         startActivityForResult(intent, 100)
     }
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == 100 && resultCode == RESULT_OK) {
-            Log.w("Llegar", "Esta llegando a data")
-            data?.data?.let { uri ->
-
-                val file = Utils.uriToFile(this, uri)
-                if (file != null) {
-                    Log.w("Llegar", "El url no esta vacio")
+        when (requestCode) {
+            100 -> {
+                if (resultCode == RESULT_OK) {
+                    data?.data?.let { uri ->
+                        val file = Utils.uriToFile(this, uri)
+                        if (file != null) {
+                            subirImagenAPI(file)
+                        }
+                    }
+                }
+            }
+            CAMERA_CAPTURE_REQUEST_CODE -> {
+                if (resultCode == RESULT_OK) {
                     subirImagenAPI(file)
                 }
             }
         }
     }
-    private fun subirImagenAPI(file: File) {
-        Log.w("Respuesta", "Esta entrando al metodo subir Imagen")
-        val requestBody = RequestBody.create("image/*".toMediaTypeOrNull(), file)
+    private fun subirImagenAPI(file :File) {
+        val requestBody = file.asRequestBody("image/*".toMediaTypeOrNull())
         val imagenPart = MultipartBody.Part.createFormData("file", file.name, requestBody)
 
         val retrofit = Retrofit.Builder()
             .baseUrl("http://10.0.2.2:5000/")  // Reemplaza con la URL de tu API
             .addConverterFactory(GsonConverterFactory.create())
             .build()
-
         val apiService = retrofit.create(ApiService::class.java)
         val call = apiService.ingresarImagenPrediccion(imagenPart)
 
@@ -82,6 +90,7 @@ class CamaraGaleria : AppCompatActivity() {
             override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {
                 if (response.isSuccessful) {
                     try {
+                        Log.w("Respuesta", "Esta entrando al  try")
                         val json = response.body()?.string()
                         val prettyJson = GsonBuilder().setPrettyPrinting().create().toJson(JsonParser().parse(json))
                         val jsonObject = JsonParser().parse(json).asJsonObject
@@ -98,16 +107,36 @@ class CamaraGaleria : AppCompatActivity() {
                     Log.w("Respuesta", "La respuesta no es succesfull")
                 }
             }
-
             override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
-                Log.w("Respuesta", "La respuesta no llego")
+                Log.e("Respuesta", "Error en la llamada a la API", t)
+
+                if (t is IOException) {
+                    // Manejo de errores de red (por ejemplo, falta de conexión)
+                    Log.e("Respuesta", "Error de red: ${t.message}")
+                } else {
+                    // Otros tipos de errores
+                    Log.e("Respuesta", "Error desconocido: ${t.message}")
+                }
             }
         })
     }
-
     private fun openCamera() {
-        val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-        startActivityForResult(cameraIntent, 100)
+        val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).also{
+            it.resolveActivity(packageManager).also { _ ->
+                createPhotoFile()
+                val photoUri: Uri = FileProvider
+                    .getUriForFile(this,
+                        BuildConfig.APPLICATION_ID + ".fileProvider", file )
+                it.putExtra(MediaStore.EXTRA_OUTPUT, photoUri)
+            }
+        }
+        startActivityForResult(cameraIntent, CAMERA_CAPTURE_REQUEST_CODE)
+    }
+
+    private fun createPhotoFile(): File {
+        val dir  = getExternalFilesDir(Environment.DIRECTORY_PICTURES)!!
+        file = File.createTempFile("IMG-${System.currentTimeMillis()}_", ".jpg", dir)
+        return file ;
     }
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)

@@ -18,9 +18,20 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AplicacionTesis"
         tools:targetApi="31">
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.squareup.picasso.fileProvider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
         <activity
             android:name=".CamaraGaleria"
             android:exported="false" />
+
         <activity
             android:name=".ActividadRecycler"
             android:exported="true">
@@ -30,5 +41,4 @@
             </intent-filter>
         </activity>
     </application>
-
 </manifest>
