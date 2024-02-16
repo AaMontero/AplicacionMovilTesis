@@ -10,9 +10,9 @@ import retrofit2.http.Path
 
 interface ApiService {
     @Multipart
-    @POST("upload")
+    @POST("upload") // Solicitud POST para subir una imagen al API
     fun ingresarImagenPrediccion(@Part file: MultipartBody.Part): Call<ResponseBody>
 
-    @GET("get_cluster/{cluster}")
+    @GET("get_cluster/{cluster}") // Solicitud GET para obtener un JSON con los elementos de un cluster
     fun obtenerClusterSeleccionado(@Path("cluster") cluster: String): Call<ResponseBody>
 }
